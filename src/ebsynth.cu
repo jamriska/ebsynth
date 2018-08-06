@@ -444,33 +444,20 @@ void runEbsynth(int    ebsynthBackend,
     pyramid[level].sourceHeight = levelSourceSize(1);
     pyramid[level].targetWidth  = levelTargetSize(0);
     pyramid[level].targetHeight = levelTargetSize(1);
-
-    pyramid[level].sourceStyle  = TexArray2<NS,unsigned char>(levelSourceSize);
-    pyramid[level].sourceGuide  = TexArray2<NG,unsigned char>(levelSourceSize);
-    pyramid[level].targetStyle  = TexArray2<NS,unsigned char>(levelTargetSize);
-    pyramid[level].targetStyle2 = TexArray2<NS,unsigned char>(levelTargetSize);
-    pyramid[level].mask         = TexArray2<1,unsigned char>(levelTargetSize);
-    pyramid[level].mask2        = TexArray2<1,unsigned char>(levelTargetSize);
-    pyramid[level].targetGuide  = TexArray2<NG,unsigned char>(levelTargetSize);
-    pyramid[level].NNF          = TexArray2<2,int>  (levelTargetSize);
-    pyramid[level].NNF2         = TexArray2<2,int>  (levelTargetSize);
-    pyramid[level].E            = TexArray2<1,float>(levelTargetSize);
-    pyramid[level].Omega        = MemArray2<int>    (levelSourceSize);
-
-    if (targetModulationData) { pyramid[level].targetModulation = TexArray2<NG,unsigned char>(levelTargetSize); }
   }
+
+  pyramid[levelCount-1].sourceStyle  = TexArray2<NS,unsigned char>(V2i(pyramid[levelCount-1].sourceWidth,pyramid[levelCount-1].sourceHeight));
+  pyramid[levelCount-1].sourceGuide  = TexArray2<NG,unsigned char>(V2i(pyramid[levelCount-1].sourceWidth,pyramid[levelCount-1].sourceHeight));
+  pyramid[levelCount-1].targetGuide  = TexArray2<NG,unsigned char>(V2i(pyramid[levelCount-1].targetWidth,pyramid[levelCount-1].targetHeight));
 
   copy(&pyramid[levelCount-1].sourceStyle,sourceStyleData);
   copy(&pyramid[levelCount-1].sourceGuide,sourceGuideData);
   copy(&pyramid[levelCount-1].targetGuide,targetGuideData);
-  if (targetModulationData) { copy(&pyramid[levelCount-1].targetModulation,targetModulationData); }
 
-  for(int level=0;level<levelCount-1;level++)
+  if (targetModulationData)
   {
-    resampleGPU(pyramid[level].sourceStyle,pyramid[levelCount-1].sourceStyle);
-    resampleGPU(pyramid[level].sourceGuide,pyramid[levelCount-1].sourceGuide);
-    resampleGPU(pyramid[level].targetGuide,pyramid[levelCount-1].targetGuide);
-    if (targetModulationData) { resampleGPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation); }
+    pyramid[levelCount-1].targetModulation = TexArray2<NG,unsigned char>(V2i(pyramid[levelCount-1].targetWidth,pyramid[levelCount-1].targetHeight));
+    copy(&pyramid[levelCount-1].targetModulation,targetModulationData); 
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -481,6 +468,35 @@ void runEbsynth(int    ebsynthBackend,
 
   for (int level=0;level<pyramid.size();level++)
   {
+    const V2i levelSourceSize = V2i(pyramid[level].sourceWidth,pyramid[level].sourceHeight);
+    const V2i levelTargetSize = V2i(pyramid[level].targetWidth,pyramid[level].targetHeight);
+
+    pyramid[level].targetStyle  = TexArray2<NS,unsigned char>(levelTargetSize);
+    pyramid[level].targetStyle2 = TexArray2<NS,unsigned char>(levelTargetSize);
+    pyramid[level].mask         = TexArray2<1,unsigned char>(levelTargetSize);
+    pyramid[level].mask2        = TexArray2<1,unsigned char>(levelTargetSize);
+    pyramid[level].NNF          = TexArray2<2,int>(levelTargetSize);
+    pyramid[level].NNF2         = TexArray2<2,int>(levelTargetSize);
+    pyramid[level].Omega        = MemArray2<int>(levelSourceSize);
+    pyramid[level].E            = TexArray2<1,float>(levelTargetSize);
+ 
+    if (level<levelCount-1)
+    {
+      pyramid[level].sourceStyle  = TexArray2<NS,unsigned char>(levelSourceSize);
+      pyramid[level].sourceGuide  = TexArray2<NG,unsigned char>(levelSourceSize);
+      pyramid[level].targetGuide  = TexArray2<NG,unsigned char>(levelTargetSize);
+
+      resampleGPU(pyramid[level].sourceStyle,pyramid[levelCount-1].sourceStyle);
+      resampleGPU(pyramid[level].sourceGuide,pyramid[levelCount-1].sourceGuide);
+      resampleGPU(pyramid[level].targetGuide,pyramid[levelCount-1].targetGuide);
+
+      if (targetModulationData)
+      {
+        resampleGPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation);
+        pyramid[level].targetModulation = TexArray2<NG,unsigned char>(levelTargetSize);
+      }
+    }
+
     /////////////////////////////////////////////////////////////////////////////
 
     if (!inExtraPass)
@@ -497,6 +513,8 @@ void runEbsynth(int    ebsynthBackend,
                              patchSize,
                              V2i(pyramid[level].targetWidth,pyramid[level].targetHeight),
                              V2i(pyramid[level].sourceWidth,pyramid[level].sourceHeight));
+        
+        pyramid[level-1].NNF.destroy();
       }
       else
       {
@@ -687,29 +705,25 @@ void runEbsynth(int    ebsynthBackend,
         }
       }
     }
-  }
 
-  checkCudaError( cudaDeviceSynchronize() );
+    if (level==levelCount-1) { copy(&outputData,pyramid[pyramid.size()-1].targetStyle); }
 
-  copy(&outputData,pyramid[pyramid.size()-1].targetStyle);
-
-  checkCudaError( cudaFree(rngStates) );
-
-  for(int level=0;level<pyramid.size();level++)
-  {
     pyramid[level].sourceStyle.destroy();
     pyramid[level].sourceGuide.destroy();
+    pyramid[level].targetGuide.destroy();
     pyramid[level].targetStyle.destroy();
     pyramid[level].targetStyle2.destroy();
     pyramid[level].mask.destroy();
     pyramid[level].mask2.destroy();
-    pyramid[level].targetGuide.destroy();
-    pyramid[level].NNF.destroy();
     pyramid[level].NNF2.destroy();
-    pyramid[level].E.destroy();
     pyramid[level].Omega.destroy();
+    pyramid[level].E.destroy();
     if (targetModulationData) { pyramid[level].targetModulation.destroy(); }
   }
+
+  pyramid[levelCount-1].NNF.destroy();
+
+  checkCudaError( cudaFree(rngStates) );
 }
 
 EBSYNTH_API void ebsynthRun(int    ebsynthBackend,
