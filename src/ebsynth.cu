@@ -464,7 +464,7 @@ void runEbsynth(int    ebsynthBackend,
 
   bool inExtraPass = false;
 
-  curandState* rngStates = initGpuRng(targetWidth,targetHeight);
+  pcgState* rngStates = initGpuRng(targetWidth,targetHeight);
 
   for (int level=0;level<pyramid.size();level++)
   {

@@ -5,20 +5,50 @@
 #ifndef PATCHMATCH_GPU_H_
 #define PATCHMATCH_GPU_H_
 
+#include <stdint.h>
 #include <cfloat>
-
-#include <curand.h>
-#include <curand_kernel.h>
 
 #include "texarray2.h"
 #include "memarray2.h"
+
+struct pcgState
+{
+  uint64_t state;
+  uint64_t increment;
+};
+
+__device__ void pcgAdvance(pcgState* rng)
+{
+  rng->state = rng->state * 6364136223846793005ULL + rng->increment;
+}
+
+__device__ uint32_t pcgOutput(uint64_t state)
+{
+  return (uint32_t)(((state >> 22u) ^ state) >> ((state >> 61u) + 22u));
+}
+
+__device__ uint32_t pcgRand(pcgState* rng)
+{
+  uint64_t oldstate = rng->state;
+  pcgAdvance(rng);
+  return pcgOutput(oldstate);
+}
+
+__device__ void pcgInit(pcgState* rng,uint64_t seed,uint64_t stream)
+{
+  rng->state = 0U;
+  rng->increment = (stream << 1u) | 1u;
+  pcgAdvance(rng);
+  rng->state += seed;
+  pcgAdvance(rng);
+}
 
 typedef Vec<1,float> V1f;
 typedef Array2<Vec<1,float>> A2V1f;
 
 __global__ void krnlInitRngStates(const int width,
                                   const int height,
-                                  curandState* rngStates)
+                                  pcgState* rngStates)
 {
   const int x = blockDim.x*blockIdx.x + threadIdx.x;
   const int y = blockDim.y*blockIdx.y + threadIdx.y;
@@ -26,15 +56,15 @@ __global__ void krnlInitRngStates(const int width,
   if (x<width && y<height)
   {
     const int idx = x+y*width;
-    curand_init((1337 << 20) + idx, 0, 0, &rngStates[idx]);
+    pcgInit(&rngStates[idx],1337,idx);    
   }
 }
 
-curandState* initGpuRng(const int width,
-                        const int height)
+pcgState* initGpuRng(const int width,
+                     const int height)
 {
-  curandState* gpuRngStates;
-  cudaMalloc(&gpuRngStates,width*height*sizeof(curandState));
+  pcgState* gpuRngStates;
+  cudaMalloc(&gpuRngStates,width*height*sizeof(pcgState));
 
   const dim3 threadsPerBlock(16,16);
   const dim3 numBlocks((width+threadsPerBlock.x)/threadsPerBlock.x,
@@ -242,7 +272,7 @@ __device__ void tryRandomOffsetInRadius(const int r,
                                         const V2i& norg,
                                         V2i&  nbest,
                                         float& ebest,
-                                        curandState* rngState)
+                                        pcgState* rngState)
 {
   const int hpw = patchWidth/2;
 
@@ -251,8 +281,8 @@ __device__ void tryRandomOffsetInRadius(const int r,
   const int ymin = max(norg(1)-r,hpw);
   const int ymax = min(norg(1)+r,sizeB(1)-1-hpw);
 
-  const int nx = xmin+(curand(rngState)%(xmax-xmin+1));
-  const int ny = ymin+(curand(rngState)%(ymax-ymin+1));
+  const int nx = xmin+(pcgRand(rngState)%(xmax-xmin+1));
+  const int ny = ymin+(pcgRand(rngState)%(ymax-ymin+1));
 
   tryPatch(sizeA,sizeB,Omega,patchWidth,patchError,lambda,x,y,nx,ny,nbest,ebest);
 }
@@ -267,7 +297,7 @@ __global__ void krnlRandomSearchPass(const V2i sizeA,
                                      TexArray2<2,int> NNF,
                                      TexArray2<1,float> E,
                                      TexArray2<1,unsigned char> mask,
-                                     curandState* rngStates)
+                                     pcgState* rngStates)
 {
   const int x = blockDim.x*blockIdx.x + threadIdx.x;
   const int y = blockDim.y*blockIdx.y + threadIdx.y;
@@ -305,7 +335,7 @@ void patchmatchGPU(const V2i sizeA,
                    TexArray2<2,int>& NNF2,
                    TexArray2<1,float>& E,
                    TexArray2<1,unsigned char>& mask,
-                   curandState* rngStates)
+                   pcgState* rngStates)
 {
   const dim3 threadsPerBlock = dim3(numThreadsPerBlock,numThreadsPerBlock);
   const dim3 numBlocks = dim3((NNF.width+threadsPerBlock.x)/threadsPerBlock.x,
