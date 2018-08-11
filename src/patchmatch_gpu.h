@@ -287,6 +287,7 @@ __device__ void tryRandomOffsetInRadius(const int r,
   tryPatch(sizeA,sizeB,Omega,patchWidth,patchError,lambda,x,y,nx,ny,nbest,ebest);
 }
 
+/*
 template<typename FUNC>
 __global__ void krnlRandomSearchPass(const V2i sizeA,
                                      const V2i sizeB,
@@ -315,6 +316,40 @@ __global__ void krnlRandomSearchPass(const V2i sizeA,
       {
         tryRandomOffsetInRadius(r,sizeA,sizeB,Omega,patchWidth,patchError,lambda,x,y,norg,nbest,ebest,&rngStates[x+y*NNF.width]);
       }
+
+      E.write(x,y,V1f(ebest));
+      NNF.write(x,y,nbest);
+    }
+  }
+}
+*/
+
+template<typename FUNC>
+__global__ void krnlRandomSearchPass(const V2i sizeA,
+                                     const V2i sizeB,
+                                     MemArray2<int> Omega,
+                                     const int patchWidth,
+                                     FUNC  patchError,
+                                     const float lambda,
+                                     const int radius,
+                                     TexArray2<2,int> NNF,
+                                     TexArray2<1,float> E,
+                                     TexArray2<1,unsigned char> mask,
+                                     pcgState* rngStates)
+{
+  const int x = blockDim.x*blockIdx.x + threadIdx.x;
+  const int y = blockDim.y*blockIdx.y + threadIdx.y;
+
+  if (x<sizeA(0) && y<sizeA(1))
+  {
+    if (mask(x,y)[0]==255)
+    {
+      V2i nbest = NNF(x,y);
+      float ebest = E(x,y)(0);
+
+      const V2i norg = nbest;
+
+      tryRandomOffsetInRadius(radius,sizeA,sizeB,Omega,patchWidth,patchError,lambda,x,y,norg,nbest,ebest,&rngStates[x+y*NNF.width]);
 
       E.write(x,y,V1f(ebest));
       NNF.write(x,y,nbest);
@@ -359,7 +394,10 @@ void patchmatchGPU(const V2i sizeA,
 
     checkCudaError(cudaDeviceSynchronize());
 
-    krnlRandomSearchPass<<<numBlocks,threadsPerBlock>>>(sizeA,sizeB,Omega,patchWidth,patchError,lambda,NNF,E,mask,rngStates);
+    for(int r=1;r<max(sizeB(0),sizeB(1))/2;r=r*2)
+    {
+      krnlRandomSearchPass<<<numBlocks,threadsPerBlock>>>(sizeA,sizeB,Omega,patchWidth,patchError,lambda,r,NNF,E,mask,rngStates);
+    }
 
     checkCudaError(cudaDeviceSynchronize());
   }
