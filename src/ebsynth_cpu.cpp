@@ -4,11 +4,16 @@
 
 #include "ebsynth.h"
 #include "jzq.h"
-#include "omp.h"
 
 #include <cmath>
 #include <cfloat>
 #include <cstring>
+
+#ifdef __APPLE__
+  #include <dispatch/dispatch.h>
+#else
+  #include <omp.h>
+#endif
 
 #define FOR(A,X,Y) for(int Y=0;Y<A.height();Y++) for(int X=0;X<A.width();X++)
 
@@ -531,7 +536,8 @@ void patchmatch(const V2i&  sizeA,
                 const int   numIters,
                 const int   numThreads,
                 A2V2i& N,
-                A2f&   E)
+                A2f&   E,
+                A2i&   Omega)
 {
   const int w = patchWidth;
     
@@ -547,14 +553,20 @@ void patchmatch(const V2i&  sizeA,
   
   const int nir = int(irad.size());
   
+#ifdef __APPLE__
+  dispatch_queue_t gcdq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH,0);
+  const int numThreads_ = 8;
+#else
   const int numThreads_ = numThreads<1 ? omp_get_max_threads() : numThreads;
+#endif
+
   const int minTileHeight = 8;
   const int numTiles = int(ceil(float(sizeA(1))/float(numThreads_))) > minTileHeight ? numThreads_ : std::max(int(ceil(float(sizeA(1))/float(minTileHeight))),1);
   const int tileHeight = sizeA(1)/numTiles;
 
   const float omegaBest = (float(sizeA(0)*sizeA(1)) /
                            float(sizeB(0)*sizeB(1))) * float(patchWidth*patchWidth);
-  A2i Omega(sizeB);
+
   fill(&Omega,(int)0);
   for(int y=0;y<sizeA(1);y++)
   for(int x=0;x<sizeA(0);x++)
@@ -566,12 +578,20 @@ void patchmatch(const V2i&  sizeA,
   {
     const int iter_seed = rand();
     
+#ifdef __APPLE__
+    dispatch_apply(numTiles,gcdq,^(size_t blockIdx)
+#else
     #pragma omp parallel num_threads(numTiles)
+#endif
     {
       const bool odd = (iter%2 == 0);
       
+#ifdef __APPLE__
+      const int threadId = blockIdx;
+#else
       const int threadId = omp_get_thread_num();
-            
+#endif
+
       const int _y0 = threadId*tileHeight;
       const int _y1 = threadId==numTiles-1 ? sizeA(1) : std::min(_y0+tileHeight,sizeA(1));
       
@@ -635,6 +655,9 @@ void patchmatch(const V2i&  sizeA,
         #undef RANDI
       }
     } 
+#ifdef __APPLE__
+    );
+#endif
   }
 }
 
@@ -683,7 +706,7 @@ void ebsynthCpu(int    numStyleChannels,
     Array2<Vec<2,int>>            NNF;
     //Array2<Vec<2,int>>            NNF2;
     Array2<float>                 E;
-    //Array2<int>                   Omega;
+    Array2<int>                   Omega;
   };
 
   std::vector<PyramidLevel> pyramid(levelCount);
@@ -727,7 +750,7 @@ void ebsynthCpu(int    numStyleChannels,
     //pyramid[level].mask2        = Array2<unsigned char>(levelTargetSize);
     pyramid[level].NNF          = Array2<Vec<2,int>>(levelTargetSize);
     //pyramid[level].NNF2         = Array2<Vec<2,int>>(levelTargetSize);
-    //pyramid[level].Omega        = Array2<int>(levelSourceSize);
+    pyramid[level].Omega        = Array2<int>(levelSourceSize);
     pyramid[level].E            = Array2<float>(levelTargetSize);
  
     if (level<levelCount-1)
@@ -860,7 +883,8 @@ void ebsynthCpu(int    numStyleChannels,
                      numPatchMatchItersPerLevel[level],
                      -1,
                      pyramid[level].NNF,
-                     pyramid[level].E);                         
+                     pyramid[level].E,
+                     pyramid[level].Omega);
         }
       }
       /*
@@ -946,7 +970,7 @@ void ebsynthCpu(int    numStyleChannels,
     //pyramid[level].mask = Array2<unsigned char>();
     //pyramid[level].mask2 = Array2<unsigned char>();
     //pyramid[level].NNF2 = Array2<Vec<2,int>>();
-    //pyramid[level].Omega = Array2<int>();
+    pyramid[level].Omega = Array2<int>();
     pyramid[level].E = Array2<float>();
     if (targetModulationData) { pyramid[level].targetModulation = Array2<Vec<NG,unsigned char>>(); }
   }
