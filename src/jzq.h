@@ -13,10 +13,16 @@
 #include <string>
 #include <algorithm>
 
-template<typename T> struct zero { static __host__ __device__ T value(); };
+#ifdef __CUDACC__
+  #define JZQ_DECORATOR __host__ __device__
+#else
+  #define JZQ_DECORATOR
+#endif
 
-template<typename T> inline T clamp(const T& x,const T& xmin,const T& xmax);
-template<typename T> inline T lerp(const T& a,const T& b,const T& t);
+template<typename T> struct zero { static JZQ_DECORATOR T value(); };
+
+template<typename T> JZQ_DECORATOR inline T clamp(const T& x,const T& xmin,const T& xmax);
+template<typename T> JZQ_DECORATOR inline T lerp(const T& a,const T& b,float t);
 
 inline std::string spf(const std::string fmt,...);
 
@@ -25,53 +31,53 @@ struct Vec
 {
   T v[N];
 
-  __host__ __device__ Vec<N,T>();
-  template<typename T2> __host__ __device__ explicit Vec<N,T>(const Vec<N,T2>& u);
-  explicit __host__ __device__ Vec<N,T>(T v0);
+  JZQ_DECORATOR Vec<N,T>();
+  template<typename T2> JZQ_DECORATOR explicit Vec<N,T>(const Vec<N,T2>& u);
+  explicit JZQ_DECORATOR Vec<N,T>(T v0);
 
-  __host__ __device__ Vec<N,T>(T v0,T v1);
-  __host__ __device__ Vec<N,T>(T v0,T v1,T v2);
-  __host__ __device__ Vec<N,T>(T v0,T v1,T v2,T v3);
-  __host__ __device__ Vec<N,T>(T v0,T v1,T v2,T v3,T v4);
-  __host__ __device__ Vec<N,T>(T v0,T v1,T v2,T v3,T v4,T v5);
+  JZQ_DECORATOR Vec<N,T>(T v0,T v1);
+  JZQ_DECORATOR Vec<N,T>(T v0,T v1,T v2);
+  JZQ_DECORATOR Vec<N,T>(T v0,T v1,T v2,T v3);
+  JZQ_DECORATOR Vec<N,T>(T v0,T v1,T v2,T v3,T v4);
+  JZQ_DECORATOR Vec<N,T>(T v0,T v1,T v2,T v3,T v4,T v5);
 
-  __host__ __device__ T&       operator()(int i);
-  __host__ __device__ const T& operator()(int i) const;
-  __host__ __device__ T&       operator[](int i);
-  __host__ __device__ const T& operator[](int i) const;
+  JZQ_DECORATOR T&       operator()(int i);
+  JZQ_DECORATOR const T& operator()(int i) const;
+  JZQ_DECORATOR T&       operator[](int i);
+  JZQ_DECORATOR const T& operator[](int i) const;
 
-  __host__ __device__ Vec<N,T> operator*=(const Vec<N,T>& u);
-  __host__ __device__ Vec<N,T> operator+=(const Vec<N,T>& u);
+  JZQ_DECORATOR Vec<N,T> operator*=(const Vec<N,T>& u);
+  JZQ_DECORATOR Vec<N,T> operator+=(const Vec<N,T>& u);
 
-  __host__ __device__ Vec<N,T> operator*=(T s);
-  __host__ __device__ Vec<N,T> operator+=(T s);
+  JZQ_DECORATOR Vec<N,T> operator*=(T s);
+  JZQ_DECORATOR Vec<N,T> operator+=(T s);
 };
 
-template<int N,typename T> Vec<N,T> __host__ __device__ operator-(const Vec<N,T>& u);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator+(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator-(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator-(const Vec<N,T>& u,const T v);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator*(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator/(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator*(const T s,const Vec<N,T>& u);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator*(const Vec<N,T>& u,const T s);
-template<int N,typename T> Vec<N,T> __host__ __device__ operator/(const Vec<N,T>& u,const T s);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator-(const Vec<N,T>& u);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator+(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator-(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator-(const Vec<N,T>& u,const T v);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator*(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator/(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator*(const T s,const Vec<N,T>& u);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator*(const Vec<N,T>& u,const T s);
+template<int N,typename T> Vec<N,T> JZQ_DECORATOR operator/(const Vec<N,T>& u,const T s);
 
-template<int N,typename T> Vec<N,bool> __host__ __device__ operator<(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,bool> __host__ __device__ operator>(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,bool> __host__ __device__ operator<=(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,bool> __host__ __device__ operator>=(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,bool> __host__ __device__ operator==(const Vec<N,T>& u,const Vec<N,T>& v);
-template<int N,typename T> Vec<N,bool> __host__ __device__ operator!=(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,bool> JZQ_DECORATOR operator<(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,bool> JZQ_DECORATOR operator>(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,bool> JZQ_DECORATOR operator<=(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,bool> JZQ_DECORATOR operator>=(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,bool> JZQ_DECORATOR operator==(const Vec<N,T>& u,const Vec<N,T>& v);
+template<int N,typename T> Vec<N,bool> JZQ_DECORATOR operator!=(const Vec<N,T>& u,const Vec<N,T>& v);
 
-template<int N,typename T> inline T        dot(const Vec<N,T>& u,const Vec<N,T>& v);
-template<typename T>       inline T        cross(const Vec<2,T> &a,const Vec<2,T> &b);
-template<typename T>       inline Vec<3,T> cross(const Vec<3,T> &a,const Vec<3,T> &b);
-template<int N,typename T> inline T        norm(const Vec<N,T>& u);
-template<int N,typename T> inline Vec<N,T> normalize(const Vec<N,T>& u);
-template<int N,typename T> inline T        min(const Vec<N,T>& u);
-template<int N,typename T> inline T        max(const Vec<N,T>& u);
-template<int N,typename T> inline T        sum(const Vec<N,T>& u);
+template<int N,typename T> JZQ_DECORATOR inline T        dot(const Vec<N,T>& u,const Vec<N,T>& v);
+template<typename T>       JZQ_DECORATOR inline T        cross(const Vec<2,T> &a,const Vec<2,T> &b);
+template<typename T>       JZQ_DECORATOR inline Vec<3,T> cross(const Vec<3,T> &a,const Vec<3,T> &b);
+template<int N,typename T> JZQ_DECORATOR inline T        norm(const Vec<N,T>& u);
+template<int N,typename T> JZQ_DECORATOR inline Vec<N,T> normalize(const Vec<N,T>& u);
+template<int N,typename T> JZQ_DECORATOR inline T        min(const Vec<N,T>& u);
+template<int N,typename T> JZQ_DECORATOR inline T        max(const Vec<N,T>& u);
+template<int N,typename T> JZQ_DECORATOR inline T        sum(const Vec<N,T>& u);
 namespace std
 {
 template<int N,typename T> inline Vec<N,T> min(const Vec<N,T>& u,const Vec<N,T>& v);
@@ -196,6 +202,7 @@ public:
   const T*   data() const;
   void       clear();
   void       swap(Array3<T>& b);
+  bool       empty() const;
 
 private:
   Vec<3,int> s;
@@ -542,19 +549,19 @@ typedef Array3< Vec<4,unsigned short> > A3V4us;
 typedef Array3< Vec<4,char> >           A3V4c;
 typedef Array3< Vec<4,unsigned char> >  A3V4uc;
 
-template<> struct zero<char          > { static __host__ __device__ char           value() { return 0;    } };
-template<> struct zero<unsigned char > { static __host__ __device__ unsigned char  value() { return 0;    } };
-template<> struct zero<short         > { static __host__ __device__ short          value() { return 0;    } };
-template<> struct zero<unsigned short> { static __host__ __device__ unsigned short value() { return 0;    } };
-template<> struct zero<int           > { static __host__ __device__ int            value() { return 0;    } };
-template<> struct zero<unsigned int  > { static __host__ __device__ unsigned int   value() { return 0;    } };
-template<> struct zero<float         > { static __host__ __device__ float          value() { return 0.0f; } };
-template<> struct zero<double        > { static __host__ __device__ double         value() { return 0.0;  } };
+template<> struct zero<char          > { static JZQ_DECORATOR char           value() { return 0;    } };
+template<> struct zero<unsigned char > { static JZQ_DECORATOR unsigned char  value() { return 0;    } };
+template<> struct zero<short         > { static JZQ_DECORATOR short          value() { return 0;    } };
+template<> struct zero<unsigned short> { static JZQ_DECORATOR unsigned short value() { return 0;    } };
+template<> struct zero<int           > { static JZQ_DECORATOR int            value() { return 0;    } };
+template<> struct zero<unsigned int  > { static JZQ_DECORATOR unsigned int   value() { return 0;    } };
+template<> struct zero<float         > { static JZQ_DECORATOR float          value() { return 0.0f; } };
+template<> struct zero<double        > { static JZQ_DECORATOR double         value() { return 0.0;  } };
 
 template<int N,typename T>
 struct zero<Vec<N,T>>
 {
-  static __host__ __device__ Vec<N,T> value()
+  static JZQ_DECORATOR Vec<N,T> value()
   {
     Vec<N,T> z;
     for(int i=0;i<N;i++) { z[i] = zero<T>::value(); }
@@ -565,7 +572,7 @@ struct zero<Vec<N,T>>
 template<int M,int N,typename T>
 struct zero<Mat<M,N,T>>
 {
-  static __host__ __device__ Mat<M,N,T> value()
+  static JZQ_DECORATOR Mat<M,N,T> value()
   {
     Mat<M,N,T> z;
     for(int i=0;i<M;i++)
@@ -577,16 +584,16 @@ struct zero<Mat<M,N,T>>
   }
 };
 
-template <typename T> inline
+template <typename T> JZQ_DECORATOR inline
 T clamp(const T& x,const T& xmin,const T& xmax)
 {
   return std::min(std::max(x,xmin),xmax);
 }
 
-template <typename T> inline
-T lerp(const T& a,const T& b,const T& t)
+template <typename T> JZQ_DECORATOR inline
+T lerp(const T& a,const T& b,float t)
 {
-  return (1.0-t)*a+t*b;
+  return (1.0f-t)*a+t*b;
 }
 
 inline std::string spf(const std::string fmt,...)
@@ -623,13 +630,13 @@ inline std::string spf(const std::string fmt,...)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec()
 {
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec(T v0)
 {
   assert(N==1);
@@ -637,7 +644,7 @@ Vec<N,T>::Vec(T v0)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec(T v0,T v1)
 {
   assert(N==2);
@@ -645,7 +652,7 @@ Vec<N,T>::Vec(T v0,T v1)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec(T v0,T v1,T v2)
 {
   assert(N==3);
@@ -653,7 +660,7 @@ Vec<N,T>::Vec(T v0,T v1,T v2)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec(T v0,T v1,T v2,T v3)
 {
   assert(N==4);
@@ -661,7 +668,7 @@ Vec<N,T>::Vec(T v0,T v1,T v2,T v3)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec(T v0,T v1,T v2,T v3,T v4)
 {
   assert(N==5);
@@ -669,7 +676,7 @@ Vec<N,T>::Vec(T v0,T v1,T v2,T v3,T v4)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec(T v0,T v1,T v2,T v3,T v4,T v5)
 {
   assert(N==6);
@@ -677,7 +684,7 @@ Vec<N,T>::Vec(T v0,T v1,T v2,T v3,T v4,T v5)
 }
 
 template<int N,typename T> template<typename T2>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T>::Vec(const Vec<N,T2>& u)
 {
   for(int i=0;i<N;i++)
@@ -687,7 +694,7 @@ Vec<N,T>::Vec(const Vec<N,T2>& u)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 T& Vec<N,T>::operator()(int i)
 {
   assert(i>=0 && i<N);
@@ -695,7 +702,7 @@ T& Vec<N,T>::operator()(int i)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 const T& Vec<N,T>::operator()(int i) const
 {
   assert(i>=0 && i<N);
@@ -703,7 +710,7 @@ const T& Vec<N,T>::operator()(int i) const
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 T& Vec<N,T>::operator[](int i)
 {
   assert(i>=0 && i<N);
@@ -711,7 +718,7 @@ T& Vec<N,T>::operator[](int i)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 const T& Vec<N,T>::operator[](int i) const
 {
   assert(i>=0 && i<N);
@@ -719,7 +726,7 @@ const T& Vec<N,T>::operator[](int i) const
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> Vec<N,T>::operator*=(const Vec<N,T>& u)
 {
   for(int i=0;i<N;i++) v[i]*=u(i);
@@ -727,7 +734,7 @@ Vec<N,T> Vec<N,T>::operator*=(const Vec<N,T>& u)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> Vec<N,T>::operator+=(const Vec<N,T>& u)
 {
   for(int i=0;i<N;i++) v[i]+=u(i);
@@ -735,7 +742,7 @@ Vec<N,T> Vec<N,T>::operator+=(const Vec<N,T>& u)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> Vec<N,T>::operator*=(T s)
 {
   for(int i=0;i<N;i++) v[i]*=s;
@@ -743,7 +750,7 @@ Vec<N,T> Vec<N,T>::operator*=(T s)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> Vec<N,T>::operator+=(T s)
 {
   for(int i=0;i<N;i++) v[i]+=s;
@@ -751,7 +758,7 @@ Vec<N,T> Vec<N,T>::operator+=(T s)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator-(const Vec<N,T>& u)
 {
   Vec<N,T> r;
@@ -760,7 +767,7 @@ Vec<N,T> operator-(const Vec<N,T>& u)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator+(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,T> r;
@@ -769,7 +776,7 @@ Vec<N,T> operator+(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator-(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,T> r;
@@ -778,7 +785,7 @@ Vec<N,T> operator-(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator-(const Vec<N,T>& u,const T v)
 {
   Vec<N,T> r;
@@ -787,7 +794,7 @@ Vec<N,T> operator-(const Vec<N,T>& u,const T v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator*(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,T> r;
@@ -796,7 +803,7 @@ Vec<N,T> operator*(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator/(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,T> r;
@@ -805,7 +812,7 @@ Vec<N,T> operator/(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator*(const T s,const Vec<N,T>& u)
 {
   Vec<N,T> r;
@@ -814,7 +821,7 @@ Vec<N,T> operator*(const T s,const Vec<N,T>& u)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator*(const Vec<N,T>& u,const T s)
 {
   Vec<N,T> r;
@@ -823,7 +830,7 @@ Vec<N,T> operator*(const Vec<N,T>& u,const T s)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,T> operator/(const Vec<N,T>& u,const T s)
 {
   Vec<N,T> r;
@@ -832,7 +839,7 @@ Vec<N,T> operator/(const Vec<N,T>& u,const T s)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,bool> operator<(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,bool> r;
@@ -841,7 +848,7 @@ Vec<N,bool> operator<(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,bool> operator>(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,bool> r;
@@ -850,7 +857,7 @@ Vec<N,bool> operator>(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,bool> operator<=(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,bool> r;
@@ -859,7 +866,7 @@ Vec<N,bool> operator<=(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,bool> operator>=(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,bool> r;
@@ -868,7 +875,7 @@ Vec<N,bool> operator>=(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,bool> operator==(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,bool> r;
@@ -877,7 +884,7 @@ Vec<N,bool> operator==(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-__host__ __device__
+JZQ_DECORATOR
 Vec<N,bool> operator!=(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   Vec<N,bool> r;
@@ -886,7 +893,7 @@ Vec<N,bool> operator!=(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<int N,typename T>
-inline T dot(const Vec<N,T>& u,const Vec<N,T>& v)
+JZQ_DECORATOR inline T dot(const Vec<N,T>& u,const Vec<N,T>& v)
 {
   assert(N>0);
   T sumprod = u(0)*v(0);
@@ -895,13 +902,13 @@ inline T dot(const Vec<N,T>& u,const Vec<N,T>& v)
 }
 
 template<typename T>
-inline T cross(const Vec<2,T> &a,const Vec<2,T> &b)
+JZQ_DECORATOR inline T cross(const Vec<2,T> &a,const Vec<2,T> &b)
 {
   return a[0]*b[1]-a[1]*b[0];
 }
 
 template<typename T>
-inline Vec<3,T> cross(const Vec<3,T> &a,const Vec<3,T> &b)
+JZQ_DECORATOR inline Vec<3,T> cross(const Vec<3,T> &a,const Vec<3,T> &b)
 {
   return Vec<3,T>(a[1]*b[2]-a[2]*b[1],
                   a[2]*b[0]-a[0]*b[2],
@@ -909,19 +916,19 @@ inline Vec<3,T> cross(const Vec<3,T> &a,const Vec<3,T> &b)
 }
 
 template<int N,typename T>
-inline T norm(const Vec<N,T>& u)
+JZQ_DECORATOR inline T norm(const Vec<N,T>& u)
 {
   return std::sqrt(dot(u,u));
 }
 
 template<int N,typename T>
-inline Vec<N,T> normalize(const Vec<N,T>& u)
+JZQ_DECORATOR inline Vec<N,T> normalize(const Vec<N,T>& u)
 {
   return u/norm(u);
 }
 
 template<int N>
-inline bool any(const Vec<N,bool>& u)
+JZQ_DECORATOR inline bool any(const Vec<N,bool>& u)
 {
   for(int i=0;i<N;i++)
   {
@@ -931,7 +938,7 @@ inline bool any(const Vec<N,bool>& u)
 }
 
 template<int N>
-inline bool all(const Vec<N,bool>& u)
+JZQ_DECORATOR inline bool all(const Vec<N,bool>& u)
 {
   for(int i=0;i<N;i++)
   {
@@ -941,7 +948,7 @@ inline bool all(const Vec<N,bool>& u)
 }
 
 template<int N,typename T>
-inline T min(const Vec<N,T>& u)
+JZQ_DECORATOR inline T min(const Vec<N,T>& u)
 {
   assert(N>0);
 
@@ -959,7 +966,7 @@ inline T min(const Vec<N,T>& u)
 }
 
 template<int N,typename T>
-inline T max(const Vec<N,T>& u)
+JZQ_DECORATOR inline T max(const Vec<N,T>& u)
 {
   assert(N>0);
 
@@ -977,7 +984,7 @@ inline T max(const Vec<N,T>& u)
 }
 
 template<int N,typename T>
-inline T sum(const Vec<N,T>& u)
+JZQ_DECORATOR inline T sum(const Vec<N,T>& u)
 {
   assert(N>0);
 
@@ -1869,6 +1876,12 @@ void Array3<T>::swap(Array3<T>& b)
 }
 
 template<typename T>
+bool Array3<T>::empty() const
+{
+  return (numel()==0);
+}
+
+template<typename T>
 Vec3i size(const Array3<T>& a)
 {
   return a.size();
@@ -1898,4 +1911,84 @@ void swap(Array3<T>& a,Array3<T>& b)
   a.swap(b);
 }
 
+template<typename T>
+void fill(Array3<T>* a,const T& value)
+{
+  assert(a!=0);
+  assert(a->numel()>0);
+
+  const int n = a->numel();
+  T* d = a->data();
+
+  for(int i=0;i<n;i++) d[i] = value;
+}
+
+template<typename T>
+Array3<T> a3read(const std::string& fileName)
+{
+  Array3<T> A;
+  if(!a3read(&A,fileName)) { return Array3<T>(); }
+  return A;
+}
+
+template<typename T>
+bool a3read(Array3<T>* out_A,const std::string& fileName)
+{
+  FILE* f = fopen(fileName.c_str(),"rb");
+
+  if(!f) { return false; }
+
+  int w,h,d,s;
+
+  if(fread(&w,sizeof(w),1,f)!=1 ||
+     fread(&h,sizeof(h),1,f)!=1 ||
+     fread(&d,sizeof(d),1,f)!=1 ||
+     fread(&s,sizeof(s),1,f)!=1 ||
+     ((w*h*d)<1) || s!=sizeof(T))
+  {
+    fclose(f);
+    return false;
+  }
+
+  Array3<T> A(w,h,d);
+
+  if(fread(A.data(),sizeof(T)*w*h*d,1,f)!=1)
+  {
+    fclose(f);
+    return false;
+  }
+
+  if(out_A!=0) { *out_A = A; }
+
+  fclose(f);
+  return true;
+}
+
+template<typename T>
+bool a3write(const Array3<T>& A,const std::string& fileName)
+{
+  if(A.numel()==0) { return false; }
+
+  FILE* f = fopen(fileName.c_str(),"wb");
+
+  if(!f) { return false; }
+
+  const int w = A.width();
+  const int h = A.height();
+  const int d = A.depth();
+  const int s = sizeof(T);
+
+  if(fwrite(&w,sizeof(w),1,f)!=1 ||
+     fwrite(&h,sizeof(h),1,f)!=1 ||
+     fwrite(&d,sizeof(d),1,f)!=1 ||
+     fwrite(&s,sizeof(s),1,f)!=1 ||
+     fwrite(A.data(),sizeof(T)*w*h*d,1,f)!=1)
+  {
+    fclose(f);
+    return false;
+  }
+
+  fclose(f);
+  return true;
+}
 #endif

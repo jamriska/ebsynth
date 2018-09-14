@@ -28,6 +28,7 @@ ebsynth -style <style.png> -guide <source.png> <target.png> -output <output.png>
 -pyramidlevels <number>
 -searchvoteiters <number>
 -patchmatchiters <number>
+-backend [cpu|cuda]
 ```
 
 ## Download
@@ -128,10 +129,6 @@ appearance guide `Gapp`, which is a grayscale version of the target photo that w
 equalized to match the luminance of the source painting.
 
 --------------------------------------------------------------------------
-
-## Requirements
-
-`ebsynth` needs a CUDA-capable gpu in order to run. Besides CUDA, there are no other external dependencies. A cpu-only version that doesn't require CUDA will be released later.
 
 ## License
 

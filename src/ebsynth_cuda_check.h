@@ -1,5 +1,5 @@
-#ifndef CUDACHECK_H_
-#define CUDACHECK_H_
+#ifndef EBSYNTH_CUDA_CHECK_H_
+#define EBSYNTH_CUDA_CHECK_H_
 
 template<typename T>
 bool checkCudaError_(T result,char const* const func,const char* const file,int const line)

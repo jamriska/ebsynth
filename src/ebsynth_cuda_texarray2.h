@@ -2,11 +2,11 @@
 // recognized, you are granted a perpetual, irrevocable license to copy
 // and modify this file as you see fit.
 
-#ifndef TEXARRAY2_H_
-#define TEXARRAY2_H_
+#ifndef EBSYNTH_CUDA_TEXARRAY2_H_
+#define EBSYNTH_CUDA_TEXARRAY2_H_
 
 #include "jzq.h"
-#include "cudacheck.h"
+#include "ebsynth_cuda_check.h"
 
 #include <cuda_runtime.h>
 
