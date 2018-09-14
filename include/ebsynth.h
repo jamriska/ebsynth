@@ -17,7 +17,9 @@
 extern "C" {
 #endif
 
+#define EBSYNTH_BACKEND_CPU         0x0001
 #define EBSYNTH_BACKEND_CUDA        0x0002
+#define EBSYNTH_BACKEND_AUTO        0x0000
 
 #define EBSYNTH_MAX_STYLE_CHANNELS  8
 #define EBSYNTH_MAX_GUIDE_CHANNELS  24
@@ -29,7 +31,7 @@ EBSYNTH_API
 int ebsynthBackendAvailable(int ebsynthBackend);   // returns non-zero if the specified backend is available
 
 EBSYNTH_API
-void ebsynthRun(int    ebsynthBackend,             // use BACKEND_CUDA for maximum speed
+void ebsynthRun(int    ebsynthBackend,             // use BACKEND_CUDA for maximum speed, BACKEND_CPU for compatibility, or BACKEND_AUTO to auto-select
 
                 int    numStyleChannels,
                 int    numGuideChannels,
@@ -61,7 +63,8 @@ void ebsynthRun(int    ebsynthBackend,             // use BACKEND_CUDA for maxim
 
                 int*   stopThresholdPerLevel,      // stop improving pixel when its change since last iteration falls under this threshold
 
-                void*  outputData                  // (width * height * numStyleChannels) bytes, scan-line order
+                void*  outputNnfData,              // (width * height * 2) ints, scan-line order; pass NULL to ignore
+                void*  outputImageData             // (width * height * numStyleChannels) bytes, scan-line order
                 );
 
 #ifdef __cplusplus
