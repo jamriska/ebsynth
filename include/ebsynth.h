@@ -63,6 +63,8 @@ void ebsynthRun(int    ebsynthBackend,             // use BACKEND_CUDA for maxim
 
                 int*   stopThresholdPerLevel,      // stop improving pixel when its change since last iteration falls under this threshold
 
+                int    extraPass3x3,               // perform additional polishing pass with 3x3 patches at the finest level, use 0 to disable
+                
                 void*  outputNnfData,              // (width * height * 2) ints, scan-line order; pass NULL to ignore
                 void*  outputImageData             // (width * height * numStyleChannels) bytes, scan-line order
                 );

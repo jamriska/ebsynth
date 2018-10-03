@@ -764,6 +764,7 @@ void ebsynthCuda(int    numStyleChannels,
                  int*   numSearchVoteItersPerLevel,
                  int*   numPatchMatchItersPerLevel,
                  int*   stopThresholdPerLevel,
+                 int    extraPass3x3,
                  void*  outputNnfData,
                  void*  outputImageData)
 {
@@ -826,39 +827,37 @@ void ebsynthCuda(int    numStyleChannels,
 
   for (int level=0;level<pyramid.size();level++)
   {
-    const V2i levelSourceSize = V2i(pyramid[level].sourceWidth,pyramid[level].sourceHeight);
-    const V2i levelTargetSize = V2i(pyramid[level].targetWidth,pyramid[level].targetHeight);
-
-    pyramid[level].targetStyle  = TexArray2<NS,unsigned char>(levelTargetSize);
-    pyramid[level].targetStyle2 = TexArray2<NS,unsigned char>(levelTargetSize);
-    pyramid[level].mask         = TexArray2<1,unsigned char>(levelTargetSize);
-    pyramid[level].mask2        = TexArray2<1,unsigned char>(levelTargetSize);
-    pyramid[level].NNF          = TexArray2<2,int>(levelTargetSize);
-    pyramid[level].NNF2         = TexArray2<2,int>(levelTargetSize);
-    pyramid[level].Omega        = MemArray2<int>(levelSourceSize);
-    pyramid[level].E            = TexArray2<1,float>(levelTargetSize);
- 
-    if (level<levelCount-1)
-    {
-      pyramid[level].sourceStyle  = TexArray2<NS,unsigned char>(levelSourceSize);
-      pyramid[level].sourceGuide  = TexArray2<NG,unsigned char>(levelSourceSize);
-      pyramid[level].targetGuide  = TexArray2<NG,unsigned char>(levelTargetSize);
-
-      resampleGPU(pyramid[level].sourceStyle,pyramid[levelCount-1].sourceStyle);
-      resampleGPU(pyramid[level].sourceGuide,pyramid[levelCount-1].sourceGuide);
-      resampleGPU(pyramid[level].targetGuide,pyramid[levelCount-1].targetGuide);
-
-      if (targetModulationData)
-      {
-        resampleGPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation);
-        pyramid[level].targetModulation = TexArray2<NG,unsigned char>(levelTargetSize);
-      }
-    }
-
-    /////////////////////////////////////////////////////////////////////////////
-
     if (!inExtraPass)
     {
+      const V2i levelSourceSize = V2i(pyramid[level].sourceWidth,pyramid[level].sourceHeight);
+      const V2i levelTargetSize = V2i(pyramid[level].targetWidth,pyramid[level].targetHeight);
+
+      pyramid[level].targetStyle  = TexArray2<NS,unsigned char>(levelTargetSize);
+      pyramid[level].targetStyle2 = TexArray2<NS,unsigned char>(levelTargetSize);
+      pyramid[level].mask         = TexArray2<1,unsigned char>(levelTargetSize);
+      pyramid[level].mask2        = TexArray2<1,unsigned char>(levelTargetSize);
+      pyramid[level].NNF          = TexArray2<2,int>(levelTargetSize);
+      pyramid[level].NNF2         = TexArray2<2,int>(levelTargetSize);
+      pyramid[level].Omega        = MemArray2<int>(levelSourceSize);
+      pyramid[level].E            = TexArray2<1,float>(levelTargetSize);
+   
+      if (level<levelCount-1)
+      {
+        pyramid[level].sourceStyle  = TexArray2<NS,unsigned char>(levelSourceSize);
+        pyramid[level].sourceGuide  = TexArray2<NG,unsigned char>(levelSourceSize);
+        pyramid[level].targetGuide  = TexArray2<NG,unsigned char>(levelTargetSize);
+
+        resampleGPU(pyramid[level].sourceStyle,pyramid[levelCount-1].sourceStyle);
+        resampleGPU(pyramid[level].sourceGuide,pyramid[levelCount-1].sourceGuide);
+        resampleGPU(pyramid[level].targetGuide,pyramid[levelCount-1].targetGuide);
+
+        if (targetModulationData)
+        {
+          resampleGPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation);
+          pyramid[level].targetModulation = TexArray2<NG,unsigned char>(levelTargetSize);
+        }
+      }
+
       A2V2i cpu_NNF;
       if (level>0)
       {
@@ -1064,23 +1063,36 @@ void ebsynthCuda(int    numStyleChannels,
       }
     }
 
-    if (level==levelCount-1)
+    if (level==levelCount-1 && (extraPass3x3==0 || (extraPass3x3!=0 && inExtraPass)))
     {      
       if (outputNnfData!=NULL) { copy(&outputNnfData,pyramid[level].NNF); }
       copy(&outputImageData,pyramid[level].targetStyle);
     }
 
-    pyramid[level].sourceStyle.destroy();
-    pyramid[level].sourceGuide.destroy();
-    pyramid[level].targetGuide.destroy();
-    pyramid[level].targetStyle.destroy();
-    pyramid[level].targetStyle2.destroy();
-    pyramid[level].mask.destroy();
-    pyramid[level].mask2.destroy();
-    pyramid[level].NNF2.destroy();
-    pyramid[level].Omega.destroy();
-    pyramid[level].E.destroy();
-    if (targetModulationData) { pyramid[level].targetModulation.destroy(); }
+    if ((level<levelCount-1) ||
+        (extraPass3x3==0) ||
+        (extraPass3x3!=0 && inExtraPass))
+    {
+      pyramid[level].sourceStyle.destroy();
+      pyramid[level].sourceGuide.destroy();
+      pyramid[level].targetGuide.destroy();
+      pyramid[level].targetStyle.destroy();
+      pyramid[level].targetStyle2.destroy();
+      pyramid[level].mask.destroy();
+      pyramid[level].mask2.destroy();
+      pyramid[level].NNF2.destroy();
+      pyramid[level].Omega.destroy();
+      pyramid[level].E.destroy();
+      if (targetModulationData) { pyramid[level].targetModulation.destroy(); }
+    }
+
+    if (level==levelCount-1 && (extraPass3x3!=0) && !inExtraPass)
+    {
+      inExtraPass = true;
+      level--;
+      patchSize = 3;
+      uniformityWeight = 0;
+    }
   }
 
   pyramid[levelCount-1].NNF.destroy();
@@ -1107,10 +1119,11 @@ void ebsynthRunCuda(int    numStyleChannels,
                     int*   numSearchVoteItersPerLevel,
                     int*   numPatchMatchItersPerLevel,
                     int*   stopThresholdPerLevel,
+                    int    extraPass3x3,
                     void*  outputNnfData,
                     void*  outputImageData)
 {
-  void (*const dispatchEbsynth[EBSYNTH_MAX_GUIDE_CHANNELS][EBSYNTH_MAX_STYLE_CHANNELS])(int,int,int,int,void*,void*,int,int,void*,void*,float*,float*,float,int,int,int,int*,int*,int*,void*,void*) =
+  void (*const dispatchEbsynth[EBSYNTH_MAX_GUIDE_CHANNELS][EBSYNTH_MAX_STYLE_CHANNELS])(int,int,int,int,void*,void*,int,int,void*,void*,float*,float*,float,int,int,int,int*,int*,int*,int,void*,void*) =
   {
     { ebsynthCuda<1, 1>, ebsynthCuda<2, 1>, ebsynthCuda<3, 1>, ebsynthCuda<4, 1>, ebsynthCuda<5, 1>, ebsynthCuda<6, 1>, ebsynthCuda<7, 1>, ebsynthCuda<8, 1> },
     { ebsynthCuda<1, 2>, ebsynthCuda<2, 2>, ebsynthCuda<3, 2>, ebsynthCuda<4, 2>, ebsynthCuda<5, 2>, ebsynthCuda<6, 2>, ebsynthCuda<7, 2>, ebsynthCuda<8, 2> },
@@ -1160,6 +1173,7 @@ void ebsynthRunCuda(int    numStyleChannels,
                                                             numSearchVoteItersPerLevel,
                                                             numPatchMatchItersPerLevel,
                                                             stopThresholdPerLevel,
+                                                            extraPass3x3,
                                                             outputNnfData,
                                                             outputImageData);
   }

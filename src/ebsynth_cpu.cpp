@@ -681,6 +681,7 @@ void ebsynthCpu(int    numStyleChannels,
                 int*   numSearchVoteItersPerLevel,
                 int*   numPatchMatchItersPerLevel,
                 int*   stopThresholdPerLevel,
+                int    extraPass3x3,
                 void*  outputNnfData,
                 void*  outputImageData)
 {
@@ -741,39 +742,37 @@ void ebsynthCpu(int    numStyleChannels,
 
   for (int level=0;level<pyramid.size();level++)
   {
-    const V2i levelSourceSize = V2i(pyramid[level].sourceWidth,pyramid[level].sourceHeight);
-    const V2i levelTargetSize = V2i(pyramid[level].targetWidth,pyramid[level].targetHeight);
-
-    pyramid[level].targetStyle  = Array2<Vec<NS,unsigned char>>(levelTargetSize);
-    pyramid[level].targetStyle2 = Array2<Vec<NS,unsigned char>>(levelTargetSize);
-    //pyramid[level].mask         = Array2<unsigned char>(levelTargetSize);
-    //pyramid[level].mask2        = Array2<unsigned char>(levelTargetSize);
-    pyramid[level].NNF          = Array2<Vec<2,int>>(levelTargetSize);
-    //pyramid[level].NNF2         = Array2<Vec<2,int>>(levelTargetSize);
-    pyramid[level].Omega        = Array2<int>(levelSourceSize);
-    pyramid[level].E            = Array2<float>(levelTargetSize);
- 
-    if (level<levelCount-1)
-    {
-      pyramid[level].sourceStyle  = Array2<Vec<NS,unsigned char>>(levelSourceSize);
-      pyramid[level].sourceGuide  = Array2<Vec<NG,unsigned char>>(levelSourceSize);
-      pyramid[level].targetGuide  = Array2<Vec<NG,unsigned char>>(levelTargetSize);
-
-      resampleCPU(pyramid[level].sourceStyle,pyramid[levelCount-1].sourceStyle);
-      resampleCPU(pyramid[level].sourceGuide,pyramid[levelCount-1].sourceGuide);
-      resampleCPU(pyramid[level].targetGuide,pyramid[levelCount-1].targetGuide);
-
-      if (targetModulationData)
-      {
-        resampleCPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation);
-        pyramid[level].targetModulation = Array2<Vec<NG,unsigned char>>(levelTargetSize);
-      }
-    }
-
-    /////////////////////////////////////////////////////////////////////////////
-
     if (!inExtraPass)
     {
+      const V2i levelSourceSize = V2i(pyramid[level].sourceWidth,pyramid[level].sourceHeight);
+      const V2i levelTargetSize = V2i(pyramid[level].targetWidth,pyramid[level].targetHeight);
+
+      pyramid[level].targetStyle  = Array2<Vec<NS,unsigned char>>(levelTargetSize);
+      pyramid[level].targetStyle2 = Array2<Vec<NS,unsigned char>>(levelTargetSize);
+      //pyramid[level].mask         = Array2<unsigned char>(levelTargetSize);
+      //pyramid[level].mask2        = Array2<unsigned char>(levelTargetSize);
+      pyramid[level].NNF          = Array2<Vec<2,int>>(levelTargetSize);
+      //pyramid[level].NNF2         = Array2<Vec<2,int>>(levelTargetSize);
+      pyramid[level].Omega        = Array2<int>(levelSourceSize);
+      pyramid[level].E            = Array2<float>(levelTargetSize);
+   
+      if (level<levelCount-1)
+      {
+        pyramid[level].sourceStyle  = Array2<Vec<NS,unsigned char>>(levelSourceSize);
+        pyramid[level].sourceGuide  = Array2<Vec<NG,unsigned char>>(levelSourceSize);
+        pyramid[level].targetGuide  = Array2<Vec<NG,unsigned char>>(levelTargetSize);
+
+        resampleCPU(pyramid[level].sourceStyle,pyramid[levelCount-1].sourceStyle);
+        resampleCPU(pyramid[level].sourceGuide,pyramid[levelCount-1].sourceGuide);
+        resampleCPU(pyramid[level].targetGuide,pyramid[levelCount-1].targetGuide);
+
+        if (targetModulationData)
+        {
+          resampleCPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation);
+          pyramid[level].targetModulation = Array2<Vec<NG,unsigned char>>(levelTargetSize);
+        }
+      }
+
       A2V2i cpu_NNF;
       if (level>0)
       {
@@ -956,23 +955,36 @@ void ebsynthCpu(int    numStyleChannels,
       }
     }
 
-    if (level==levelCount-1)
-    {
+    if (level==levelCount-1 && (extraPass3x3==0 || (extraPass3x3!=0 && inExtraPass)))
+    {      
       if (outputNnfData!=NULL) { copy(&outputNnfData,pyramid[level].NNF); }
       copy(&outputImageData,pyramid[level].targetStyle);
     }
 
-    pyramid[level].sourceStyle = Array2<Vec<NS,unsigned char>>();
-    pyramid[level].sourceGuide = Array2<Vec<NG,unsigned char>>();
-    pyramid[level].targetGuide = Array2<Vec<NG,unsigned char>>();
-    pyramid[level].targetStyle = Array2<Vec<NS,unsigned char>>();
-    pyramid[level].targetStyle2 = Array2<Vec<NS,unsigned char>>();
-    //pyramid[level].mask = Array2<unsigned char>();
-    //pyramid[level].mask2 = Array2<unsigned char>();
-    //pyramid[level].NNF2 = Array2<Vec<2,int>>();
-    pyramid[level].Omega = Array2<int>();
-    pyramid[level].E = Array2<float>();
-    if (targetModulationData) { pyramid[level].targetModulation = Array2<Vec<NG,unsigned char>>(); }
+    if ((level<levelCount-1) ||
+        (extraPass3x3==0) ||
+        (extraPass3x3!=0 && inExtraPass))
+    {
+      pyramid[level].sourceStyle = Array2<Vec<NS,unsigned char>>();
+      pyramid[level].sourceGuide = Array2<Vec<NG,unsigned char>>();
+      pyramid[level].targetGuide = Array2<Vec<NG,unsigned char>>();
+      pyramid[level].targetStyle = Array2<Vec<NS,unsigned char>>();
+      pyramid[level].targetStyle2 = Array2<Vec<NS,unsigned char>>();
+      //pyramid[level].mask = Array2<unsigned char>();
+      //pyramid[level].mask2 = Array2<unsigned char>();
+      //pyramid[level].NNF2 = Array2<Vec<2,int>>();
+      pyramid[level].Omega = Array2<int>();
+      pyramid[level].E = Array2<float>();
+      if (targetModulationData) { pyramid[level].targetModulation = Array2<Vec<NG,unsigned char>>(); }
+    }
+
+    if (level==levelCount-1 && (extraPass3x3!=0) && !inExtraPass)
+    {
+      inExtraPass = true;
+      level--;
+      patchSize = 3;
+      uniformityWeight = 0;
+    }
   }
 
   pyramid[levelCount-1].NNF = Array2<Vec<2,int>>();
@@ -997,10 +1009,11 @@ void ebsynthRunCpu(int    numStyleChannels,
                    int*   numSearchVoteItersPerLevel,
                    int*   numPatchMatchItersPerLevel,
                    int*   stopThresholdPerLevel,
+                   int    extraPass3x3,
                    void*  outputNnfData,
                    void*  outputImageData)
 {
-  void (*const dispatchEbsynth[EBSYNTH_MAX_GUIDE_CHANNELS][EBSYNTH_MAX_STYLE_CHANNELS])(int,int,int,int,void*,void*,int,int,void*,void*,float*,float*,float,int,int,int,int*,int*,int*,void*,void*) =
+  void (*const dispatchEbsynth[EBSYNTH_MAX_GUIDE_CHANNELS][EBSYNTH_MAX_STYLE_CHANNELS])(int,int,int,int,void*,void*,int,int,void*,void*,float*,float*,float,int,int,int,int*,int*,int*,int,void*,void*) =
   {
     { ebsynthCpu<1, 1>, ebsynthCpu<2, 1>, ebsynthCpu<3, 1>, ebsynthCpu<4, 1>, ebsynthCpu<5, 1>, ebsynthCpu<6, 1>, ebsynthCpu<7, 1>, ebsynthCpu<8, 1> },
     { ebsynthCpu<1, 2>, ebsynthCpu<2, 2>, ebsynthCpu<3, 2>, ebsynthCpu<4, 2>, ebsynthCpu<5, 2>, ebsynthCpu<6, 2>, ebsynthCpu<7, 2>, ebsynthCpu<8, 2> },
@@ -1050,6 +1063,7 @@ void ebsynthRunCpu(int    numStyleChannels,
                                                             numSearchVoteItersPerLevel,
                                                             numPatchMatchItersPerLevel,
                                                             stopThresholdPerLevel,
+                                                            extraPass3x3,
                                                             outputNnfData,
                                                             outputImageData);
   }

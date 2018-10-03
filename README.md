@@ -28,6 +28,7 @@ ebsynth -style <style.png> -guide <source.png> <target.png> -output <output.png>
 -pyramidlevels <number>
 -searchvoteiters <number>
 -patchmatchiters <number>
+-extrapass3x3
 -backend [cpu|cuda]
 ```
 

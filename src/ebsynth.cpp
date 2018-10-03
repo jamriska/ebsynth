@@ -30,10 +30,11 @@ void ebsynthRun(int    ebsynthBackend,
                 int*   numSearchVoteItersPerLevel,
                 int*   numPatchMatchItersPerLevel,
                 int*   stopThresholdPerLevel,
+                int    extraPass3x3,
                 void*  outputNnfData,
                 void*  outputImageData)
 {
-  void (*backendDispatch)(int,int,int,int,void*,void*,int,int,void*,void*,float*,float*,float,int,int,int,int*,int*,int*,void*,void*) = 0;
+  void (*backendDispatch)(int,int,int,int,void*,void*,int,int,void*,void*,float*,float*,float,int,int,int,int*,int*,int*,int,void*,void*) = 0;
   
   if      (ebsynthBackend==EBSYNTH_BACKEND_CPU ) { backendDispatch = ebsynthRunCpu;  }
   else if (ebsynthBackend==EBSYNTH_BACKEND_CUDA) { backendDispatch = ebsynthRunCuda; }
@@ -60,6 +61,7 @@ void ebsynthRun(int    ebsynthBackend,
                     numSearchVoteItersPerLevel,
                     numPatchMatchItersPerLevel,
                     stopThresholdPerLevel,
+                    extraPass3x3,
                     outputNnfData,
                     outputImageData);
   }
@@ -256,6 +258,7 @@ int main(int argc,char** argv)
     printf("  -searchvoteiters <number>\n");
     printf("  -patchmatchiters <number>\n");
     printf("  -stopthreshold <value>\n");
+    printf("  -extrapass3x3\n");
     printf("  -backend [cpu|cuda]\n");
     printf("\n");
     return 1;
@@ -290,6 +293,7 @@ int main(int argc,char** argv)
   int numSearchVoteIters = 6;
   int numPatchMatchIters = 4;
   int stopThreshold = 5;
+  int extraPass3x3 = 0;
   int backend = ebsynthBackendAvailable(EBSYNTH_BACKEND_CUDA) ? EBSYNTH_BACKEND_CUDA : EBSYNTH_BACKEND_CPU;
 
   {
@@ -367,6 +371,11 @@ int main(int argc,char** argv)
 
         if (!ebsynthBackendAvailable(backend)) { printf("error: the %s backend is not available!\n",backendToString(backend).c_str()); return 1; }
 
+        argi++;
+      }
+      else if (argi<args.size() && args[argi]=="-extrapass3x3")
+      {
+        extraPass3x3 = 1;
         argi++;
       }
       else
@@ -510,6 +519,7 @@ int main(int argc,char** argv)
   printf("searchvoteiters: %d\n",numSearchVoteIters);
   printf("patchmatchiters: %d\n",numPatchMatchIters);
   printf("stopthreshold: %d\n",stopThreshold);
+  printf("extrapass3x3: %s\n",extraPass3x3!=0?"yes":"no");
   printf("backend: %s\n",backendToString(backend).c_str());
 
   ebsynthRun(backend,
@@ -532,6 +542,7 @@ int main(int argc,char** argv)
              numSearchVoteItersPerLevel.data(),
              numPatchMatchItersPerLevel.data(),
              stopThresholdPerLevel.data(),
+             extraPass3x3,
              NULL,
              output.data());
 
