@@ -467,10 +467,10 @@ int main(int argc,char** argv)
   }
 
   std::vector<float> styleWeights(numStyleChannelsTotal);
-  if (isnan(styleWeight)) { styleWeight = 1.0f; }
+  if (std::isnan(styleWeight)) { styleWeight = 1.0f; }
   for(int i=0;i<numStyleChannelsTotal;i++) { styleWeights[i] = styleWeight / float(numStyleChannelsTotal); }
 
-  for(int i=0;i<numGuides;i++) { if (isnan(guides[i].weight)) { guides[i].weight = 1.0f/float(numGuides); } }
+  for(int i=0;i<numGuides;i++) { if (std::isnan(guides[i].weight)) { guides[i].weight = 1.0f/float(numGuides); } }
 
   std::vector<float> guideWeights(numGuideChannelsTotal);
   {
