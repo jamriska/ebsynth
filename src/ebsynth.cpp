@@ -265,7 +265,7 @@ int main(int argc,char** argv)
   }
 
   std::string styleFileName;
-  float       styleWeight = NAN;
+  float       styleWeight = -1;
   std::string outputFileName = "output.png";
 
   struct Guide
@@ -312,7 +312,7 @@ int main(int argc,char** argv)
 
       if      (tryToParseStringArg(args,&argi,"-style",&styleFileName,&fail))
       {
-        styleWeight = NAN;
+        styleWeight = -1;
         precedingStyleOrGuideWeight = &styleWeight;
         argi++;
       }
@@ -321,7 +321,7 @@ int main(int argc,char** argv)
         Guide guide;
         guide.sourceFileName = guidePair.first;
         guide.targetFileName = guidePair.second;
-        guide.weight = NAN;
+        guide.weight = -1;
         guides.push_back(guide);
         precedingStyleOrGuideWeight = &guides[guides.size()-1].weight;
         argi++;
@@ -332,7 +332,11 @@ int main(int argc,char** argv)
       }
       else if (tryToParseFloatArg(args,&argi,"-weight",&weight,&fail))
       {
-        if (precedingStyleOrGuideWeight!=0) { *precedingStyleOrGuideWeight = weight; }
+        if (precedingStyleOrGuideWeight!=0)
+        {
+          if (weight>=0) { *precedingStyleOrGuideWeight = weight; }
+          else { printf("error: weights must be non-negaitve!\n"); return 1; }
+        }
         else { printf("error: at least one -style or -guide option must precede the -weight option!\n"); return 1; }
         argi++;
       }
@@ -467,10 +471,10 @@ int main(int argc,char** argv)
   }
 
   std::vector<float> styleWeights(numStyleChannelsTotal);
-  if (std::isnan(styleWeight)) { styleWeight = 1.0f; }
+  if (styleWeight<0) { styleWeight = 1.0f; }
   for(int i=0;i<numStyleChannelsTotal;i++) { styleWeights[i] = styleWeight / float(numStyleChannelsTotal); }
 
-  for(int i=0;i<numGuides;i++) { if (std::isnan(guides[i].weight)) { guides[i].weight = 1.0f/float(numGuides); } }
+  for(int i=0;i<numGuides;i++) { if (guides[i].weight<0) { guides[i].weight = 1.0f/float(numGuides); } }
 
   std::vector<float> guideWeights(numGuideChannelsTotal);
   {
