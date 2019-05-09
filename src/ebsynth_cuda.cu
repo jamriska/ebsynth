@@ -853,8 +853,8 @@ void ebsynthCuda(int    numStyleChannels,
 
         if (targetModulationData)
         {
-          resampleGPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation);
           pyramid[level].targetModulation = TexArray2<NG,unsigned char>(levelTargetSize);
+          resampleGPU(pyramid[level].targetModulation,pyramid[levelCount-1].targetModulation);
         }
       }
 
