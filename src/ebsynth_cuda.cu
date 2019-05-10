@@ -722,7 +722,7 @@ struct PatchSSD_Split_Modulation
         {
           const Vec<NG,T> pixTg = targetGuide(tx + px,ty + py);
           const Vec<NG,T> pixSg = sourceGuide(sx + px,sy + py);
-          const Vec<NG,float> mult = Vec<NG,float>(targetModulation(tx,ty))/255.0f;
+          const Vec<NG,float> mult = Vec<NG,float>(targetModulation(tx + px,ty + py))/255.0f;
 
           for(int i=0;i<NG;i++)
           {
