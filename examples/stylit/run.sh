@@ -1,5 +1,5 @@
 #!/bin/sh
-export PATH=../../bin:$PATH
+export PATH="../../bin:$PATH"
 
 ebsynth -style source_style.png \
         -guide source_fullgi.png target_fullgi.png -weight 0.5 \
