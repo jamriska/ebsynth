@@ -1,5 +1,5 @@
 #!/bin/sh
-export PATH=../../bin:$PATH
+export PATH="../../bin:$PATH"
 
 ebsynth -style source_painting.png \
         -guide source_Gapp.png target_Gapp.png -weight 0.5 \
